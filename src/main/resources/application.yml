@@ -1,0 +1,27 @@
+server:
+    port: 8080
+
+spring:
+    application:
+        name: mi-banco-api
+
+    datasource:
+        # MySQL debe estar disponible antes de iniciar la aplicación.
+        url: ${DB_URL:jdbc:mysql://localhost:3306/mi_banco?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+        username: ${DB_USERNAME:root}
+        password: ${DB_PASSWORD:}
+        driver-class-name: com.mysql.cj.jdbc.Driver
+
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: ${DB_SHOW_SQL:false}
+        properties:
+            hibernate:
+                format_sql: true
+                dialect: org.hibernate.dialect.MySQLDialect
+
+app:
+    jwt:
+        secret: ${JWT_SECRET:TWlCYW5jby1kZXNhcnJvbGxvLXNlY3JldC1jbGF2ZS0zMi1ieXRlcyE=}
+        expiration-ms: 86400000
