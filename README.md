@@ -99,6 +99,10 @@ Las imágenes siguientes documentan la versión ejecutándose y un flujo real re
 
 ![Documentación Swagger UI de Mi Banco API](docs/evidencias/01-swagger-endpoints.png)
 
+**Captura adicional de Swagger UI con las rutas de autenticación y transacciones:**
+
+![Captura adicional de las rutas de Mi Banco API en Swagger UI](docs/evidencias/03-swagger-rutas-completas.png)
+
 **Registro, depósito, transferencia, consulta de historial y rechazo de acceso a otra cuenta:**
 
 ![Resumen del flujo probado contra la API local](docs/evidencias/02-flujo-verificado.png)
