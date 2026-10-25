@@ -1,38 +1,139 @@
 # Mi Banco API
 
-Backend REST para practicar registro de usuarios, cuentas, autenticación JWT, depósitos de prueba y transferencias. Está construido con Java 17, Spring Boot, Spring Security, Spring Data JPA y MySQL.
+Aplicación bancaria hecha con Spring Boot, Spring Security y JWT para autenticación, gestión de cuentas y flujo de transacciones bancarias. Esta versión incluye un depósito simulado para pruebas locales.
 
-## Origen y trabajo realizado
+El backend toma como referencia [DanielDev87/bckdbank](https://github.com/DanielDev87/bckdbank); esta versión adapta su configuración y amplía sus funciones.
 
-Este proyecto parte como referencia del backend público [DanielDev87/bckdbank](https://github.com/DanielDev87/bckdbank). Esta carpeta es una copia de trabajo separada; el repositorio de referencia no fue modificado.
+## Requisitos
 
-Sobre esa base adapté la identidad y configuración para Mi Banco, y realicé estos cambios:
+- Java 17+
+- Maven 3.9+
+- MySQL 8+
+- Postman o Thunder Client
 
-- Moví las clases al paquete `com.mibanco.api` y cambié el nombre del artefacto Maven.
-- Separé la persistencia en la base `mi_banco` y externalicé credenciales y clave JWT mediante variables de entorno.
-- Hice que las cuentas nuevas comiencen con saldo cero.
-- Reemplacé `Math.random()` por `SecureRandom` al generar números de cuenta.
-- Añadí bloqueo pesimista de cuentas y orden estable al adquirir bloqueos durante transferencias concurrentes.
-- Añadí validación de precisión monetaria y longitud en solicitudes.
-- Añadí depósitos de prueba autenticados: el usuario solo puede depositar en una cuenta propia y el movimiento queda registrado en el historial.
+## Ejecutar la aplicación
 
-El endpoint de depósito **simula el fondeo para esta práctica**. No representa un ingreso de dinero real y no debe habilitarse como tal en un sistema bancario de producción.
+Desde la raíz del proyecto:
 
-## Funcionalidades y rutas
+1. Abre una terminal.
+2. Ejecuta:
+   - Windows: `./mvnw spring-boot:run`
+3. La API quedará disponible en:
+   - `http://localhost:8080`
 
-| Método | Ruta | Acceso | Descripción |
-| --- | --- | --- | --- |
-| `POST` | `/api/v1/auth/register` | Público | Registra usuario, crea cuenta de ahorros en cero y devuelve JWT. |
-| `POST` | `/api/v1/auth/login` | Público | Inicia sesión y devuelve JWT. |
-| `GET` | `/api/v1/accounts` | JWT | Lista las cuentas del usuario. |
-| `GET` | `/api/v1/accounts/{accountNumber}` | JWT | Consulta una cuenta propia. |
-| `POST` | `/api/v1/transactions/deposit` | JWT | Registra un depósito de prueba en una cuenta propia. |
-| `POST` | `/api/v1/transactions/transfer` | JWT | Transfiere entre cuentas y registra el movimiento. |
-| `GET` | `/api/v1/transactions/account/{accountNumber}` | JWT | Lista movimientos de una cuenta propia. |
+La aplicación usa MySQL. Por defecto se conecta a:
 
-### Ejemplo de depósito
+- Base de datos: `mi_banco`
+- Usuario: `root`
+- Contraseña: vacía
+- Servidor: `localhost:3306`
 
-Envía `Authorization: Bearer <token>`:
+Puedes cambiar estos valores mediante las variables de entorno `DB_URL`, `DB_USERNAME` y `DB_PASSWORD`.
+
+En el entorno local usado para la verificación, MySQL utiliza el puerto `3307` porque el puerto `3306` está ocupado. La aplicación se inicia en ese entorno con:
+
+```bash
+DB_URL='jdbc:mysql://localhost:3307/mi_banco?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC' DB_USERNAME=root DB_PASSWORD='' ./mvnw spring-boot:run
+```
+
+## Swagger / OpenAPI
+
+Con la aplicación ejecutándose, abre la documentación interactiva en:
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- Especificación OpenAPI: `http://localhost:8080/v3/api-docs`
+
+Para probar endpoints protegidos desde Swagger:
+
+1. Ejecuta primero `POST /api/v1/auth/login`.
+2. Copia el valor de `token` de la respuesta.
+3. Pulsa **Authorize**.
+4. Pega el token sin comillas ni el prefijo `Bearer`.
+5. Pulsa **Authorize** y luego **Close**.
+
+También puedes compilar y ejecutar con:
+
+- `./mvnw clean package`
+- `java -jar target/mi-banco-api-0.0.1-SNAPSHOT.jar`
+
+## Cómo probarla con Postman o Thunder Client
+
+No se usa curl ni terminal para probar la API. Todas las pruebas se hacen por endpoint desde la interfaz del cliente HTTP.
+
+### 1. Registrar un usuario
+
+En Postman o Thunder Client crea una petición de tipo POST.
+
+- URL: `http://localhost:8080/api/v1/auth/register`
+- Body: raw JSON
+
+```json
+{
+  "firstName": "Ana",
+  "lastName": "García",
+  "email": "ana@correo.com",
+  "password": "123456"
+}
+```
+
+Haz clic en Send.
+
+Si todo sale bien, la respuesta devolverá un token JWT y el email del usuario registrado.
+
+### 2. Iniciar sesión
+
+Crea otra petición POST.
+
+- URL: `http://localhost:8080/api/v1/auth/login`
+- Body: raw JSON
+
+```json
+{
+  "email": "ana@correo.com",
+  "password": "123456"
+}
+```
+
+La respuesta deberá incluir el token JWT. Copia ese valor.
+
+### 3. Usar el token para las rutas protegidas
+
+Para cualquier endpoint protegido:
+
+- Ve a la pestaña Headers
+- Agrega esta cabecera:
+
+```http
+Authorization: Bearer <TOKEN_GENERADO>
+```
+
+Ejemplo:
+
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+```
+
+### 4. Consultar cuentas del usuario autenticado
+
+- Método: GET
+- URL: `http://localhost:8080/api/v1/accounts`
+- Headers:
+  - `Authorization: Bearer <TOKEN_GENERADO>`
+
+Haz clic en Send y revisa la respuesta.
+
+### 5. Consultar una cuenta específica
+
+- Método: GET
+- URL: `http://localhost:8080/api/v1/accounts/{accountNumber}`
+- Headers:
+  - `Authorization: Bearer <TOKEN_GENERADO>`
+
+Reemplaza `{accountNumber}` por el número devuelto al consultar las cuentas.
+
+### Depósito de prueba
+
+Las cuentas recién creadas tienen saldo cero. El depósito de prueba se registra mediante `POST /api/v1/transactions/deposit` y requiere el token del usuario titular de la cuenta. El cuerpo de la solicitud tiene el siguiente formato:
 
 ```json
 {
@@ -42,89 +143,161 @@ Envía `Authorization: Bearer <token>`:
 }
 ```
 
-### Ejemplo de transferencia
+Este endpoint solo simula el fondeo para las pruebas de la aplicación; no representa dinero real.
+
+### 6. Registrar otro usuario
+
+Para probar una transferencia, registra un segundo usuario y consulta su número de cuenta.
+
+```json
+{
+  "firstName": "Luis",
+  "lastName": "Pérez",
+  "email": "luis@test.com",
+  "password": "123456"
+}
+```
+
+### 7. Realizar una transferencia
+
+Inicia sesión con el usuario propietario de la cuenta de origen y usa su token.
+
+- Método: POST
+- URL: `http://localhost:8080/api/v1/transactions/transfer`
+- Headers:
+  - `Authorization: Bearer <TOKEN_GENERADO>`
+  - `Content-Type: application/json`
 
 ```json
 {
   "sourceAccountNumber": "CUENTA_ORIGEN",
   "destinationAccountNumber": "CUENTA_DESTINO",
-  "amount": 75.50,
-  "description": "Pago de prueba"
+  "amount": 250.00,
+  "description": "Transferencia de prueba"
 }
 ```
 
-El token debe pertenecer al titular de la cuenta de origen. El sistema rechaza cuentas iguales, montos menores a `0.01`, montos con más de dos decimales y saldo insuficiente.
+La cuenta de origen debe pertenecer al usuario autenticado y debe tener saldo suficiente.
 
-## Requisitos
+### 8. Consultar el historial
 
-- Java 17 o superior
-- Maven (incluido Maven Wrapper)
-- MySQL 8 o superior
+- Método: GET
+- URL: `http://localhost:8080/api/v1/transactions/account/{accountNumber}`
+- Headers:
+  - `Authorization: Bearer <TOKEN_GENERADO>`
 
-## Configuración y ejecución
+El historial mostrará las transferencias asociadas a la cuenta indicada.
 
-La aplicación usa `http://localhost:8080`. En tu entorno actual, MySQL está configurado en el puerto `3307`, con el usuario `root` y sin contraseña; usa el comando de ejemplo de abajo para iniciarla. Las variables de entorno solo se cambian si ejecutas el proyecto en otra máquina cuya configuración de MySQL sea distinta:
+## Pruebas recomendadas por endpoint
 
-| Variable | Valor por defecto | Uso |
-| --- | --- | --- |
-| `DB_URL` | `jdbc:mysql://localhost:3306/mi_banco?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC` | URL JDBC de MySQL |
-| `DB_USERNAME` | `root` | Usuario de MySQL |
-| `DB_PASSWORD` | vacío | Contraseña de MySQL |
-| `JWT_SECRET` | clave local de desarrollo | Clave Base64 para firmar JWT; en despliegue usa una clave secreta propia de al menos 256 bits |
-| `DB_SHOW_SQL` | `false` | Activa la salida SQL de Hibernate si vale `true` |
+### Registro
 
-No tienes que definir estas variables si MySQL está en el puerto `3306`, acepta al usuario `root` sin contraseña y quieres usar la base `mi_banco`. Para tu instalación local, MySQL usa el puerto `3307` porque `3306` ya está ocupado; ejecuta así:
+- POST `/api/v1/auth/register`
+- Debe crear un usuario nuevo y asignarle una cuenta inicial.
 
-```bash
-DB_URL='jdbc:mysql://localhost:3307/mi_banco?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC' \
-DB_USERNAME=root DB_PASSWORD='' ./mvnw spring-boot:run
+### Login
+
+- POST `/api/v1/auth/login`
+- Debe devolver un token JWT válido.
+
+### Cuentas
+
+- GET `/api/v1/accounts`
+- Debe devolver todas las cuentas del usuario actual.
+
+- GET `/api/v1/accounts/{accountNumber}`
+- Debe devolver los datos de una cuenta específica si pertenece al usuario autenticado.
+
+### Transferencias
+
+- POST `/api/v1/transactions/transfer`
+- Debe descontar el monto de la cuenta de origen, sumarlo a la cuenta destino y registrar la transacción.
+
+- GET `/api/v1/transactions/account/{accountNumber}`
+- Debe devolver el historial de la cuenta autenticada.
+
+### Depósitos
+
+- POST `/api/v1/transactions/deposit`
+- Debe registrar un depósito simulado en una cuenta perteneciente al usuario autenticado.
+
+## Datos de prueba sugeridos
+
+Puedes crear varios usuarios para validar el flujo completo:
+
+```json
+{
+  "firstName": "Luis",
+  "lastName": "Pérez",
+  "email": "luis@test.com",
+  "password": "123456"
+}
 ```
 
-Desde esta carpeta, inicia normalmente con:
-
-```bash
-./mvnw spring-boot:run
+```json
+{
+  "firstName": "Maria",
+  "lastName": "López",
+  "email": "maria@test.com",
+  "password": "123456"
+}
 ```
 
-Swagger UI: <http://localhost:8080/swagger-ui.html>  
-OpenAPI: <http://localhost:8080/v3/api-docs>
+## Solución de problemas
 
-Hibernate crea o actualiza las tablas mediante `ddl-auto: update`, adecuado para esta práctica local. Para producción se recomienda migración explícita de esquema y configuración de secretos fuera del código.
+- Si aparece `401 Unauthorized`, revisa que el token esté bien enviado en el header `Authorization`.
+- Si aparece `403 Forbidden`, verifica que Swagger o Postman esté usando el token correcto y que no tenga comillas. En Swagger, pega solo el token en **Authorize**.
+- Si aparece `404 Not Found`, revisa que el número de cuenta exista y pertenezca al usuario autenticado.
+- Si la app no arranca, revisa que Java 17 y MySQL estén instalados y ejecuta `./mvnw test` para verificar que el proyecto compila.
 
-## Evidencia de ejecución
-
-Las imágenes siguientes documentan la versión ejecutándose y un flujo real realizado contra la API local. El reporte de respuestas omite los JWT; el detalle JSON está disponible en [`docs/evidencias/flujo-api.json`](docs/evidencias/flujo-api.json). Los usuarios y movimientos del ejemplo son datos sintéticos.
-
-**Swagger UI con las rutas de la versión:**
-
-![Documentación Swagger UI de Mi Banco API](docs/evidencias/01-swagger-endpoints.png)
-
-**Captura adicional de Swagger UI con las rutas de autenticación y transacciones:**
-
-![Captura adicional de las rutas de Mi Banco API en Swagger UI](docs/evidencias/03-swagger-rutas-completas.png)
-
-**Registro, depósito, transferencia, consulta de historial y rechazo de acceso a otra cuenta:**
-
-![Resumen del flujo probado contra la API local](docs/evidencias/02-flujo-verificado.png)
-
-## Verificación
-
-Compilar sin ejecutar pruebas:
-
-```bash
-./mvnw -DskipTests package
-```
-
-## Estructura
+## Estructura principal del proyecto
 
 ```text
-src/main/java/com/mibanco/api/
-├── config/       # Seguridad, JWT y OpenAPI
-├── controller/   # Endpoints REST
-├── dto/          # Solicitudes y respuestas
-├── entity/       # Usuarios, cuentas y movimientos
-├── exception/    # Errores de dominio y respuestas HTTP
-├── repository/   # Persistencia JPA
-├── security/     # Filtro y emisión de JWT
-└── service/      # Reglas de negocio
+src/
+  main/
+    java/
+      com/mibanco/api/
+        config/
+        controller/
+        dto/
+        entity/
+        exception/
+        repository/
+        security/
+        service/
+  resources/
+    application.yml
 ```
+
+Los controladores principales son:
+
+```text
+controller/
+  AuthController.java
+  AccountController.java
+  TransactionController.java
+```
+
+## Tecnologías usadas
+
+- Java 17
+- Spring Boot 4.1.0
+- Spring Security
+- JWT
+- Spring Data JPA
+- MySQL
+- Swagger / OpenAPI
+
+## Autor
+
+Proyecto desarrollado para práctica de banca digital con Java y Spring Boot.
+
+## Evidencias
+
+Las capturas corresponden a Swagger UI y al flujo de registro, depósito, transferencia, historial y rechazo de acceso a una cuenta ajena. Los datos de ejemplo son sintéticos.
+
+![Rutas de la API en Swagger UI](docs/evidencias/01-swagger-endpoints.png)
+
+![Captura adicional de rutas de autenticación y transacciones en Swagger UI](docs/evidencias/03-swagger-rutas-completas.png)
+
+![Flujo verificado de la API](docs/evidencias/02-flujo-verificado.png)
